@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>受付ダッシュボード</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    /* CSSは前回と完全に同じなので省略せずにそのまま全て使用します */
+    body { font-family: sans-serif; margin: 0; background-color: #111; color: #fff; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    #camera-section { flex: 4; background: #000; position: relative; display: flex; justify-content: center; align-items: center; }
+    #reader { width: 100%; height: 100%; }
+    .btn-list-open { position: absolute; top: 15px; right: 15px; background: rgba(0, 0, 0, 0.6); color: #fff; border: 1px solid rgba(255,255,255,0.4); padding: 10px 20px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; z-index: 20; }
+    #info-section { flex: 6; background-color: #f0f2f5; color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-top-left-radius: 25px; border-top-right-radius: 25px; margin-top: -20px; z-index: 10; transition: background-color 0.3s; }
+    #status-text { font-size: 20px; color: #888; font-weight: bold; margin-bottom: 10px; }
+    #disp-id { font-size: 10vw; font-weight: 900; margin: 0; line-height: 1; color: #111; }
+    #disp-name { font-size: 8vw; font-weight: 900; margin: 5px 0; text-align: center; width: 95%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #disp-price { font-size: 10vw; font-weight: bold; color: #d32f2f; border: 5px solid #d32f2f; padding: 0 30px; border-radius: 15px; margin: 10px 0; background: rgba(255,255,255,0.8); }
+    .btn-complete { background: #111; color: white; border: none; padding: 20px 0; font-size: 32px; font-weight: bold; border-radius: 20px; width: 90%; cursor: pointer; margin-top: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
+    .bg-green { background-color: #a5d6a7 !important; }
+    .bg-red { background-color: #ef9a9a !important; }
+    .bg-blue { background-color: #90caf9 !important; }
+    #stamp-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(255,255,255,0.9); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
+    .stamp-circle { width: 300px; height: 300px; border: 20px solid #d32f2f; border-radius: 50%; color: #d32f2f; font-size: 150px; font-weight: 900; display: flex; align-items: center; justify-content: center; transform: rotate(-15deg) scale(5); opacity: 0; }
+    .stamp-animate { animation: stampDrop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    @keyframes stampDrop { to { transform: rotate(-15deg) scale(1); opacity: 1; } }
+    #insult-text { margin-top: 30px; font-size: 40px; font-weight: bold; color: #111; text-align: center; }
+    #list-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 1000; display: none; flex-direction: column; }
+    .list-header { background: #111; color: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; font-size: 24px; }
+    .btn-close { background: none; border: none; color: #fff; font-size: 36px; cursor: pointer; }
+    .search-box { width: 100%; padding: 20px; font-size: 20px; border: none; border-bottom: 2px solid #ddd; box-sizing: border-box; }
+    #list-container { flex: 1; overflow-y: auto; color: #333; }
+    .list-item { padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 20px; }
+    .badge-done { background: #333; color: #fff; padding: 5px 15px; border-radius: 8px; font-size: 16px; }
+    #btn-start { position: absolute; padding: 20px 30px; font-size: 20px; background: #d32f2f; color: #fff; border: none; border-radius: 50px; z-index: 100; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.5); display: none; }
+    #loading-cover { position: absolute; top:0; left:0; width:100%; height:100%; background:#000; display:flex; justify-content:center; align-items:center; z-index: 200; font-size: 24px; }
+  </style>
+</head>
+<body>
+
+  <div id="camera-section">
+    <div id="loading-cover">データ読込中ッス...</div>
+    <div id="reader"></div>
+    <button class="btn-list-open" onclick="toggleList(true)">📋 名簿</button>
+    <button id="btn-start" onclick="initScanner()">📷 カメラ起動</button>
+  </div>
+
+  <div id="info-section">
+    <div id="status-text">スキャン待機中...</div>
+    <p id="disp-id"></p>
+    <h1 id="disp-name"></h1>
+    <div id="disp-price" style="display:none;"></div>
+    <button id="btn-complete" class="btn-complete" onclick="processCheckIn()" style="display:none;">受付完了</button>
+  </div>
+
+  <div id="list-modal">
+    <div class="list-header"><span>名簿 (<span id="total-count">0</span>)</span><button class="btn-close" onclick="toggleList(false)">✕</button></div>
+    <input type="text" id="search-input" class="search-box" placeholder="よみがな・番号で検索..." onkeyup="filterList()">
+    <div id="list-container"></div>
+  </div>
+
+  <div id="stamp-overlay"><div class="stamp-circle" id="stamp-circle">済</div><div id="insult-text"></div></div>
+
+  <script>
+    // ★★★ 超重要：あなたのGASのURL（デプロイID）をここに貼り付ける ★★★
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbzivBF5poLgvGmASb7Tvsr_waWX06LQ0UpRhcpkS-kw5DCTDR1XikQJTwD0oD041s8qRA/exec";
+
+    let globalData = [];
+    let scanner;
+    let isScanning = false;
+    let currentUser = null;
+
+    // 1. 起動時に名簿をダウンロード（API経由に変更）
+    window.onload = function() {
+      fetch(GAS_URL + "?action=getData")
+        .then(response => response.json())
+        .then(data => {
+          globalData = data;
+          document.getElementById('loading-cover').style.display = 'none';
+          document.getElementById('btn-start').style.display = 'block';
+          renderList(globalData);
+        })
+        .catch(err => alert("データ取得エラー: " + err));
+    };
+
+    // 2. カメラ起動（脱獄により100%成功します）
+    function initScanner() {
+      document.getElementById('btn-start').style.display = 'none';
+      scanner = new Html5Qrcode("reader");
+      scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } }, onScanSuccess)
+        .then(() => { isScanning = true; })
+        .catch(err => {
+          alert("カメラがブロックされたッス！ブラウザの設定を確認してッス！");
+          document.getElementById('btn-start').style.display = 'block';
+        });
+    }
+
+    // 3. QR読み取り成功時（ローカルデータと一瞬で照合）
+    function onScanSuccess(decodedText) {
+      if (!isScanning) return;
+      let idStr = decodedText;
+      try {
+        const url = new URL(decodedText);
+        idStr = url.searchParams.get("id") || decodedText;
+      } catch(e) {}
+      const cleanScanId = String(idStr).replace(/'/g, '').trim();
+
+      const user = globalData.find(u => {
+        const cleanSheetId = String(u.id).replace(/'/g, '').trim();
+        if (cleanSheetId === cleanScanId) return true;
+        if (!isNaN(cleanSheetId) && !isNaN(cleanScanId) && Number(cleanSheetId) === Number(cleanScanId)) return true;
+        return false;
+      });
+
+      if (user) {
+        isScanning = false; 
+        showUserInfo(user);
+      } else {
+        document.getElementById('status-text').innerText = `未登録のIDッス！(${cleanScanId})`;
+        document.getElementById('status-text').style.color = "#d32f2f";
+      }
+    }
+
+    // 4. ユーザー情報を画面にセット（変更なし）
+    function showUserInfo(user) {
+      currentUser = user;
+      toggleList(false);
+      document.getElementById('status-text').innerText = "確認完了ッス！";
+      document.getElementById('status-text').style.color = "#888";
+      document.getElementById('disp-id').innerText = "No." + user.id;
+      document.getElementById('disp-name').innerText = user.name;
+      const p = document.getElementById('disp-price');
+      p.innerText = user.price + "円";
+      p.style.display = 'block';
+      const btn = document.getElementById('btn-complete');
+      btn.innerText = user.status === '済' ? '済（再受付）' : '受付完了';
+      btn.style.display = 'block';
+      const sec = document.getElementById('info-section');
+      sec.className = ''; 
+      if (user.price === 200) sec.classList.add('bg-green');
+      else if (user.price >= 400) sec.classList.add('bg-red');
+      else sec.classList.add('bg-blue');
+    }
+
+    // 5. 「受付完了」ボタンを押した時の処理（API経由に変更）
+    function processCheckIn() {
+      if(!currentUser) return;
+      let insult = "よし、入れ！";
+      const pr = Number(currentUser.price);
+      if(pr === 100) insult = "半分足りないぞ！";
+      else if(pr === 200) insult = "これぞ至高！";
+      else if(pr === 300) insult = "シリンダーどこ？";
+      else if(pr >= 400) insult = "多すぎだろボケ！";
+
+      const overlay = document.getElementById('stamp-overlay');
+      document.getElementById('insult-text').innerText = insult;
+      overlay.style.display = 'flex';
+      const stamp = document.getElementById('stamp-circle');
+      stamp.classList.remove('stamp-animate');
+      void stamp.offsetWidth;
+      stamp.classList.add('stamp-animate');
+
+      // ★ API経由でバックグラウンド更新
+      fetch(GAS_URL + "?action=updateCheckIn&rowNum=" + currentUser.rowNum + "&status=済")
+        .then(res => res.json())
+        .then(data => console.log("受付完了:", data));
+
+      currentUser.status = '済'; 
+      renderList(globalData);    
+
+      setTimeout(() => {
+        overlay.style.display = 'none';
+        resetUI();
+        isScanning = true;
+      }, 2000);
+    }
+
+    function resetUI() {
+      currentUser = null;
+      document.getElementById('info-section').className = '';
+      document.getElementById('status-text').innerText = "次のQRをかざしてッス！";
+      document.getElementById('disp-id').innerText = "";
+      document.getElementById('disp-name').innerText = "";
+      document.getElementById('disp-price').style.display = 'none';
+      document.getElementById('btn-complete').style.display = 'none';
+    }
+
+    // 名簿機能ロジック（変更なし）
+    function toggleList(show) { document.getElementById('list-modal').style.display = show ? 'flex' : 'none'; }
+    function renderList(arr) {
+      const c = document.getElementById('list-container');
+      document.getElementById('total-count').innerText = arr.length;
+      c.innerHTML = arr.map(u => `
+        <div class="list-item" onclick='showUserInfo(${JSON.stringify(u)})'>
+          <div><small>No.${u.id}</small><br><strong>${u.name}</strong></div>
+          ${u.status === '済' ? '<span class="badge-done">済</span>' : ''}
+        </div>
+      `).join('');
+    }
+    function filterList() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      renderList(globalData.filter(u => u.yomi.includes(q) || u.name.includes(q) || u.id.includes(q)));
+    }
+  </script>
+</body>
+</html>
