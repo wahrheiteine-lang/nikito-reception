@@ -120,6 +120,9 @@
       } catch(e) {}
       const cleanScanId = String(idStr).replace(/'/g, '').trim();
 
+      // ★追加：枝番が付いている場合（001.0等）、小数点以下を切り捨ててベースID（001）にする
+      const cleanScanId = rawScanId.split('.')[0];
+
       const user = globalData.find(u => {
         const cleanSheetId = String(u.id).replace(/'/g, '').trim();
         if (cleanSheetId === cleanScanId) return true;
