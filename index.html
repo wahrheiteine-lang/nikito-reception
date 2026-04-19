@@ -88,15 +88,15 @@
     display.style.display = 'block';
     display.innerText = "データを照会中..."; // ロード中の表示
 
-    // GASの裏側を呼び出す
-    google.script.run
-      .withSuccessHandler(function(result) {
-        display.innerText = result; // 成功したら結果を表示
+    // ★修正：世界標準の fetch で GAS にリクエストを送る
+    fetch(GAS_URL + "?action=getMissing")
+      .then(response => response.text())
+      .then(text => {
+        display.innerText = text; // 成功したら結果を表示
       })
-      .withFailureHandler(function(error) {
-        display.innerText = "通信エラーッス: " + error.message;
-      })
-      .getMissingIdsForFrontend();
+      .catch(error => {
+        display.innerText = "通信エラーッス: " + error;
+      });
   }
 </script>
 
