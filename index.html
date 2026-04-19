@@ -75,28 +75,41 @@
   </div>
 
   <div style="margin: 15px 0; padding: 10px; background: #eef2f3; border-radius: 8px; border: 1px solid #ccc;">
-  <button onclick="checkMissingIdsFrontend()" style="width: 100%; padding: 12px; background: #445566; color: #fff; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+  <button id="btn-check-missing" onclick="checkMissingIdsFrontend()" style="width: 100%; padding: 12px; background: #445566; color: #fff; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
     🔍 空き番号（欠番）をチェック
   </button>
   
-  <pre id="missing-id-display" style="display: none; background: #fff; padding: 10px; margin-top: 10px; white-space: pre-wrap; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; color: #333;"></pre>
+  <div id="missing-id-container" style="display: none; margin-top: 10px; position: relative;">
+    <button onclick="closeMissingIds()" style="position: absolute; top: 5px; right: 5px; background: #a33; color: white; border: none; padding: 5px 15px; border-radius: 4px; font-weight: bold; cursor: pointer; box-shadow: 2px 2px 0px rgba(0,0,0,0.2);">
+      ✖ 閉じる
+    </button>
+    <pre id="missing-id-display" style="background: #fff; padding: 40px 10px 10px 10px; margin: 0; white-space: pre-wrap; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; color: #333; min-height: 100px;"></pre>
+  </div>
 </div>
 
 <script>
   function checkMissingIdsFrontend() {
+    const container = document.getElementById('missing-id-container');
     const display = document.getElementById('missing-id-display');
-    display.style.display = 'block';
-    display.innerText = "データを照会中..."; // ロード中の表示
+    
+    // エリアを表示してロード中テキストを入れる
+    container.style.display = 'block';
+    display.innerText = "データを照会中...";
 
-    // ★修正：世界標準の fetch で GAS にリクエストを送る
+    // GASの裏側を呼び出す
     fetch(GAS_URL + "?action=getMissing")
       .then(response => response.text())
       .then(text => {
-        display.innerText = text; // 成功したら結果を表示
+        display.innerText = text;
       })
       .catch(error => {
         display.innerText = "通信エラーッス: " + error;
       });
+  }
+
+  // ★閉じるボタンの機能
+  function closeMissingIds() {
+    document.getElementById('missing-id-container').style.display = 'none';
   }
 </script>
 
