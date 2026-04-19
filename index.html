@@ -284,18 +284,31 @@
       document.getElementById('btn-complete').style.display = 'none';
     }
 
-    // 名簿機能ロジック（変更なし）
-    function toggleList(show) { document.getElementById('list-modal').style.display = show ? 'flex' : 'none'; }
-    function renderList(arr) {
-      const c = document.getElementById('list-container');
-      document.getElementById('total-count').innerText = arr.length;
-      c.innerHTML = arr.map(u => `
-        <div class="list-item" onclick='showUserInfo(${JSON.stringify(u)})'>
-          <div><small>No.${u.id}</small><br><strong>${u.name}</strong></div>
-          ${u.status === '済' ? '<span class="badge-done">済</span>' : ''}
-        </div>
-      `).join('');
+    // === 名簿機能（古いコードを完全排除した絶対表示版） ===
+  function toggleList(show) { document.getElementById('list-modal').style.display = show ? 'flex' : 'none'; }
+
+  function renderList(arr) {
+    const c = document.getElementById('list-container');
+    document.getElementById('total-count').innerText = arr.length;
+    
+    let html = '';
+    for (let i = 0; i < arr.length; i++) {
+      let u = arr[i];
+      let isDone = String(u.status || '').indexOf('済') !== -1;
+      let uJson = JSON.stringify(u).replace(/'/g, "\\'"); 
+      
+      let badgeHtml = isDone 
+        ? '<span style="background: #333; color: #fff; padding: 5px 15px; border-radius: 8px; font-size: 16px; font-weight:bold;">済</span>' 
+        : '';
+      
+      html += `<div class="list-item" style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 20px; cursor: pointer;" onclick='showUserInfo(${uJson})'>
+        <div><small style="color: #666;">No.${u.id}</small><br><strong style="color: #111;">${u.name}</strong></div>
+        ${badgeHtml}
+      </div>`;
     }
+    
+    c.innerHTML = html;
+  }
     function filterList() {
       const q = document.getElementById('search-input').value.toLowerCase();
       renderList(globalData.filter(u => u.yomi.includes(q) || u.name.includes(q) || u.id.includes(q)));
