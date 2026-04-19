@@ -249,35 +249,7 @@
     }, 2000);
   }
 
-  // === 名簿リスト描画（絶対表示・最強防弾版） ===
-  function renderList(arr) {
-    const c = document.getElementById('list-container');
-    document.getElementById('total-count').innerText = arr.length;
-    
-    let html = '';
-    for (let i = 0; i < arr.length; i++) {
-      let u = arr[i];
-      
-      // 1. 文字列として安全に判定。絵文字があっても「済」が含まれれば問答無用でTRUE
-      let isDone = String(u.status || '').indexOf('済') !== -1;
-      
-      // 2. JSONエラーでリストが崩れるのを防ぐ絶対安全な処理
-      let uJson = JSON.stringify(u).replace(/'/g, "\\'"); 
-      
-      // 3. CSSがなくても絶対に表示されるよう、デザイン（黒背景・白文字）を直書き
-      let badgeHtml = isDone 
-        ? '<span style="background: #333; color: #fff; padding: 5px 15px; border-radius: 8px; font-size: 16px; font-weight:bold;">済</span>' 
-        : '';
-      
-      // リストの生成
-      html += `<div class="list-item" style="padding: 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 20px; cursor: pointer;" onclick='showUserInfo(${uJson})'>
-        <div><small style="color: #666;">No.${u.id}</small><br><strong style="color: #111;">${u.name}</strong></div>
-        ${badgeHtml}
-      </div>`;
-    }
-    
-    c.innerHTML = html;
-  }
+ 
     function resetUI() {
       currentUser = null;
       document.getElementById('info-section').className = '';
