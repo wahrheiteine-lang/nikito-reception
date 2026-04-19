@@ -74,6 +74,32 @@
     <div id="list-container"></div>
   </div>
 
+  <div style="margin: 15px 0; padding: 10px; background: #eef2f3; border-radius: 8px; border: 1px solid #ccc;">
+  <button onclick="checkMissingIdsFrontend()" style="width: 100%; padding: 12px; background: #445566; color: #fff; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;">
+    🔍 空き番号（欠番）をチェック
+  </button>
+  
+  <pre id="missing-id-display" style="display: none; background: #fff; padding: 10px; margin-top: 10px; white-space: pre-wrap; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; color: #333;"></pre>
+</div>
+
+<script>
+  function checkMissingIdsFrontend() {
+    const display = document.getElementById('missing-id-display');
+    display.style.display = 'block';
+    display.innerText = "データを照会中..."; // ロード中の表示
+
+    // GASの裏側を呼び出す
+    google.script.run
+      .withSuccessHandler(function(result) {
+        display.innerText = result; // 成功したら結果を表示
+      })
+      .withFailureHandler(function(error) {
+        display.innerText = "通信エラーッス: " + error.message;
+      })
+      .getMissingIdsForFrontend();
+  }
+</script>
+
   <div id="stamp-overlay"><div class="stamp-circle" id="stamp-circle">済</div><div id="insult-text"></div></div>
 
   <script>
@@ -167,10 +193,10 @@
       if(!currentUser) return;
       let insult = "よし、入れ！";
       const pr = Number(currentUser.price);
-      if(pr === 100) insult = "半分足りないぞ！";
-      else if(pr === 200) insult = "これぞ至高！";
-      else if(pr === 300) insult = "シリンダーどこ？";
-      else if(pr >= 400) insult = "多すぎだろボケ！";
+      if(pr === 100) insult = "";
+      else if(pr === 200) insult = "";
+      else if(pr === 300) insult = "";
+      else if(pr >= 400) insult = "";
 
       const overlay = document.getElementById('stamp-overlay');
       document.getElementById('insult-text').innerText = insult;
