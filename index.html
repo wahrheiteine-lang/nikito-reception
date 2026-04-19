@@ -180,59 +180,82 @@
       }
     }
 
-    // 4. ユーザー情報を画面にセット（変更なし）
-    function showUserInfo(user) {
-      currentUser = user;
-      toggleList(false);
-      document.getElementById('status-text').innerText = "確認完了ッス！";
-      document.getElementById('status-text').style.color = "#888";
-      document.getElementById('disp-id').innerText = "No." + user.id;
-      document.getElementById('disp-name').innerText = user.name;
-      const p = document.getElementById('disp-price');
-      p.innerText = user.price + "円";
-      p.style.display = 'block';
-      const btn = document.getElementById('btn-complete');
-      btn.innerText = user.status === '済' ? '済（再受付）' : '受付完了';
-      btn.style.display = 'block';
-      const sec = document.getElementById('info-section');
-      sec.className = ''; 
-      if (user.price === 200) sec.classList.add('bg-green');
-      else if (user.price >= 400) sec.classList.add('bg-red');
-      else sec.classList.add('bg-blue');
-    }
+    // 4. ユーザー情報を画面にセット
+  function showUserInfo(user) {
+    currentUser = user;
+    toggleList(false); 
 
-    // 5. 「受付完了」ボタンを押した時の処理（API経由に変更）
-    function processCheckIn() {
-      if(!currentUser) return;
-      let insult = "よし、入れ！";
-      const pr = Number(currentUser.price);
-      if(pr === 100) insult = "";
-      else if(pr === 200) insult = "";
-      else if(pr === 300) insult = "";
-      else if(pr >= 400) insult = "";
+    document.getElementById('status-text').innerText = "確認完了ッス！";
+    document.getElementById('status-text').style.color = "#888";
+    document.getElementById('disp-id').innerText = "No." + user.id;
+    document.getElementById('disp-name').innerText = user.name;
+    
+    const p = document.getElementById('disp-price');
+    p.innerText = user.price + "円";
+    p.style.display = 'block';
 
-      const overlay = document.getElementById('stamp-overlay');
-      document.getElementById('insult-text').innerText = insult;
-      overlay.style.display = 'flex';
-      const stamp = document.getElementById('stamp-circle');
-      stamp.classList.remove('stamp-animate');
-      void stamp.offsetWidth;
-      stamp.classList.add('stamp-animate');
+    const btn = document.getElementById('btn-complete');
+    // ★厳格な一致(===)をやめ、文字が含まれているか(includes)で判定する
+    btn.innerText = (user.status && user.status.includes('済')) ? '済（再受付）' : '受付完了';
+    btn.style.display = 'block';
 
-      // ★ API経由でバックグラウンド更新
-      fetch(GAS_URL + "?action=updateCheckIn&rowNum=" + currentUser.rowNum + "&status=済")
-        .then(res => res.json())
-        .then(data => console.log("受付完了:", data));
+    const sec = document.getElementById('info-section');
+    sec.className = ''; 
+    if (user.price === 200) sec.classList.add('bg-green');
+    else if (user.price >= 400) sec.classList.add('bg-red');
+    else sec.classList.add('bg-blue');
+  }
 
-      currentUser.status = '済'; 
-      renderList(globalData);    
+  // 5. 「受付完了」ボタンを押した時の処理
+  function processCheckIn() {
+    if(!currentUser) return;
 
-      setTimeout(() => {
-        overlay.style.display = 'none';
-        resetUI();
-        isScanning = true;
-      }, 2000);
-    }
+    let insult = "よし、入れ！";
+    const pr = Number(currentUser.price);
+    if(pr === 100) insult = "";
+    else if(pr === 200) insult = "";
+    else if(pr === 300) insult = "";
+    else if(pr >= 400) insult = "";
+
+    const overlay = document.getElementById('stamp-overlay');
+    document.getElementById('insult-text').innerText = insult;
+    overlay.style.display = 'flex';
+    
+    const stamp = document.getElementById('stamp-circle');
+    stamp.classList.remove('stamp-animate');
+    void stamp.offsetWidth;
+    stamp.classList.add('stamp-animate');
+
+    // ★GitHubからGAS(webapp.gs)へ通信を送る
+    fetch(`${GAS_URL}?action=updateCheckIn&rowNum=${currentUser.rowNum}&status=済`)
+      .then(res => res.json())
+      .then(data => console.log("受付完了", data));
+
+    // ★スマホ内のデータも、スプシに合わせて絵文字付きに上書きする！
+    currentUser.status = '🟦 受付済'; 
+    document.getElementById('btn-complete').innerText = '済（再受付）';
+    
+    // 名簿を再描画
+    renderList(globalData);    
+
+    setTimeout(() => {
+      overlay.style.display = 'none';
+      resetUI();
+      isScanning = true;
+    }, 2000);
+  }
+
+  // === 名簿機能 ===
+  function renderList(arr) {
+    const c = document.getElementById('list-container');
+    document.getElementById('total-count').innerText = arr.length;
+    c.innerHTML = arr.map(u => `
+      <div class="list-item" onclick='showUserInfo(${JSON.stringify(u)})'>
+        <div><small>No.${u.id}</small><br><strong>${u.name}</strong></div>
+        ${(u.status && u.status.includes('済')) ? '<span class="badge-done">済</span>' : ''}
+      </div>
+    `).join('');
+  }
 
     function resetUI() {
       currentUser = null;
